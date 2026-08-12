@@ -15,6 +15,7 @@ from typing import Any
 
 import httpx
 
+from . import USER_AGENT
 from .legacy_catalog import BUNDLED_CATALOGS
 from .services import SERVICE_BY_KEY, SERVICES, ServiceDefinition
 
@@ -196,7 +197,7 @@ class DiscoveryCatalog:
                 except (OSError, json.JSONDecodeError):
                     pass
 
-        headers = {"User-Agent": "google-my-business-mcp/0.2.0"}
+        headers = {"User-Agent": USER_AGENT}
         async with httpx.AsyncClient(
             timeout=self.timeout_seconds, headers=headers
         ) as client:

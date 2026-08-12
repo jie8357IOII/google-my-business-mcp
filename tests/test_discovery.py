@@ -134,15 +134,35 @@ def test_legacy_v4_404_falls_back_to_versioned_catalog(monkeypatch, tmp_path):
     asyncio.run(catalog.ensure_loaded())
 
     assert "using bundled catalog" in catalog.errors["mybusiness_v4"]
-    assert {
+    expected_legacy_tools = {
         "gmb_v4_accounts_locations_localposts_create",
+        "gmb_v4_accounts_locations_localposts_get",
         "gmb_v4_accounts_locations_localposts_list",
+        "gmb_v4_accounts_locations_localposts_patch",
+        "gmb_v4_accounts_locations_localposts_delete",
         "gmb_v4_accounts_locations_media_create",
+        "gmb_v4_accounts_locations_media_get",
+        "gmb_v4_accounts_locations_media_list",
+        "gmb_v4_accounts_locations_media_patch",
+        "gmb_v4_accounts_locations_media_delete",
+        "gmb_v4_accounts_locations_reviews_get",
+        "gmb_v4_accounts_locations_reviews_list",
         "gmb_v4_accounts_locations_reviews_updatereply",
-    }.issubset(catalog.methods)
-    assert (
-        catalog.get_method("gmb_v4_accounts_locations_localposts_patch").method[
-            "request"
-        ]["$ref"]
-        == "LocalPost"
+        "gmb_v4_accounts_locations_reviews_deletereply",
+    }
+    assert expected_legacy_tools.issubset(catalog.methods)
+    local_post_patch = catalog.get_method(
+        "gmb_v4_accounts_locations_localposts_patch"
+    ).method
+    assert local_post_patch["request"]["$ref"] == "LocalPost"
+    assert local_post_patch["path"] == (
+        "v4/{name=accounts/*/locations/*/localPosts/*}"
     )
+    assert local_post_patch["parameters"]["updateMask"]["required"] is True
+    media_patch = catalog.get_method("gmb_v4_accounts_locations_media_patch")
+    assert media_patch.method["request"]["$ref"] == "MediaItem"
+    assert media_patch.method["path"] == (
+        "v4/{name=accounts/*/locations/*/media/*}"
+    )
+    assert media_patch.method["parameters"]["name"]["required"] is True
+    assert media_patch.method["parameters"]["updateMask"]["required"] is False

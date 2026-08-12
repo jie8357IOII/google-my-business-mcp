@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import re
@@ -32,9 +33,19 @@ _SIGNED_URL_KEYS = {
     "x-amz-expires",
     "x-amz-signature",
     "x-amz-signedheaders",
+    "x-goog-algorithm",
+    "x-goog-credential",
+    "x-goog-date",
+    "x-goog-expires",
+    "x-goog-signature",
+    "x-goog-signedheaders",
+    "sig",
     "signature",
     "token",
 }
+_SIGNED_URL_PREFIXES = ("x-amz-", "x-goog-")
+_DEFAULT_CONFIRMATION_TIMEOUT_SECONDS = 120.0
+_MAX_CONFIRMATION_TIMEOUT_SECONDS = 600.0
 
 
 def tool_annotations(http_method: str) -> mcp_types.ToolAnnotations:
@@ -63,7 +74,10 @@ def _sanitize(value: Any, key: str = "") -> Any:
         query_keys = {
             pair.split("=", 1)[0].lower() for pair in parts.query.split("&") if pair
         }
-        if query_keys & _SIGNED_URL_KEYS:
+        has_signed_key = bool(query_keys & _SIGNED_URL_KEYS) or any(
+            key.startswith(_SIGNED_URL_PREFIXES) for key in query_keys
+        )
+        if has_signed_key:
             return urlunsplit(
                 (parts.scheme, parts.netloc, parts.path, "<redacted>", "")
             )
@@ -98,6 +112,37 @@ def write_confirmation_required() -> bool:
     }
 
 
+def write_confirmation_timeout_seconds() -> float:
+    """Return a bounded timeout for MCP write elicitation."""
+    raw = os.environ.get(
+        "GMB_MCP_WRITE_CONFIRMATION_TIMEOUT_SECONDS",
+        str(_DEFAULT_CONFIRMATION_TIMEOUT_SECONDS),
+    )
+    try:
+        timeout = float(raw)
+    except ValueError as exc:
+        raise ValueError(
+            "GMB_MCP_WRITE_CONFIRMATION_TIMEOUT_SECONDS must be a number"
+        ) from exc
+    if not 0 < timeout <= _MAX_CONFIRMATION_TIMEOUT_SECONDS:
+        raise ValueError(
+            "GMB_MCP_WRITE_CONFIRMATION_TIMEOUT_SECONDS must be greater than 0 "
+            f"and at most {_MAX_CONFIRMATION_TIMEOUT_SECONDS:g}"
+        )
+    return timeout
+
+
+def _acknowledged(result: Any) -> bool:
+    content = getattr(result, "content", None)
+    if hasattr(content, "model_dump"):
+        content = content.model_dump()
+    return (
+        getattr(result, "action", None) == "accept"
+        and isinstance(content, dict)
+        and content.get("acknowledge") is True
+    )
+
+
 async def require_write_confirmation(
     descriptor: Any, arguments: dict[str, Any], session: Any
 ) -> bool:
@@ -107,20 +152,23 @@ async def require_write_confirmation(
     if not write_confirmation_required():
         return True
     preview = operation_preview(descriptor, arguments)
-    result = await session.elicit_form(
-        message="Confirm this Google Business Profile write:\n\n" + preview,
-        requestedSchema={
-            "type": "object",
-            "properties": {
-                "acknowledge": {
-                    "type": "boolean",
-                    "title": "I approve exactly this operation",
-                    "default": True,
-                }
+    result = await asyncio.wait_for(
+        session.elicit_form(
+            message="Confirm this Google Business Profile write:\n\n" + preview,
+            requestedSchema={
+                "type": "object",
+                "properties": {
+                    "acknowledge": {
+                        "type": "boolean",
+                        "title": "I approve exactly this operation",
+                    }
+                },
+                "required": ["acknowledge"],
             },
-        },
+        ),
+        timeout=write_confirmation_timeout_seconds(),
     )
-    return result.action == "accept"
+    return _acknowledged(result)
 
 
 async def execute_tool(

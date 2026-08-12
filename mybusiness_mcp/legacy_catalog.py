@@ -89,9 +89,9 @@ BUNDLED_V4_CATALOG: dict[str, Any] = {
                                 "patch": _method(
                                     "mybusiness.accounts.locations.localPosts.patch",
                                     "PATCH",
-                                    "v4/{localPost.name=accounts/*/locations/*/localPosts/*}",
+                                    "v4/{name=accounts/*/locations/*/localPosts/*}",
                                     parameters={
-                                        "localPost.name": NAME,
+                                        "name": NAME,
                                         "updateMask": _parameter(
                                             location="query", required=True
                                         ),
@@ -131,6 +131,17 @@ BUNDLED_V4_CATALOG: dict[str, Any] = {
                                     "v4/{parent=accounts/*/locations/*}/media",
                                     parameters={"parent": PARENT, **PAGE},
                                     description="Lists media for a location.",
+                                ),
+                                "patch": _method(
+                                    "mybusiness.accounts.locations.media.patch",
+                                    "PATCH",
+                                    "v4/{name=accounts/*/locations/*/media/*}",
+                                    parameters={
+                                        "name": NAME,
+                                        "updateMask": _parameter(location="query"),
+                                    },
+                                    request="MediaItem",
+                                    description="Updates media item metadata using an update mask.",
                                 ),
                                 "delete": _method(
                                     "mybusiness.accounts.locations.media.delete",
