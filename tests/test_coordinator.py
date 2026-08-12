@@ -169,3 +169,44 @@ def test_read_skips_elicitation(monkeypatch):
 
     assert result == {"ok": True}
     assert len(fake_client.calls) == 1
+
+
+def test_provider_error_is_mcp_error(monkeypatch):
+    class FailingClient:
+        async def execute(self, method, arguments):
+            raise coordinator.GoogleApiError(
+                500,
+                "Internal error encountered.",
+                {"error": {"status": "INTERNAL"}},
+            )
+
+    monkeypatch.setattr(coordinator, "catalog", FakeCatalog())
+    monkeypatch.setattr(coordinator, "client", FailingClient())
+    monkeypatch.delenv("GMB_MCP_REQUIRE_WRITE_CONFIRMATION", raising=False)
+
+    result = asyncio.run(
+        coordinator.call_mcp_tool("read_tool", {})
+    )
+
+    assert result.isError is True
+    assert result.structuredContent["status_code"] == 500
+    assert result.structuredContent["google_error"]["error"]["status"] == "INTERNAL"
+    assert "Google API error 500" in result.content[0].text
+
+
+def test_declined_write_is_mcp_error(monkeypatch):
+    fake_client = FakeClient()
+    monkeypatch.setattr(coordinator, "catalog", FakeCatalog())
+    monkeypatch.setattr(coordinator, "client", fake_client)
+    monkeypatch.setenv("GMB_MCP_REQUIRE_WRITE_CONFIRMATION", "1")
+
+    result = asyncio.run(
+        coordinator.call_mcp_tool(
+            "write_tool", {"body": {"title": "New"}},
+        )
+    )
+
+    # No request context means the confirmation gate is unavailable.
+    assert result.isError is True
+    assert result.structuredContent["code"] == "WRITE_CONFIRMATION_UNAVAILABLE"
+    assert fake_client.calls == []

@@ -235,8 +235,9 @@ async def list_tools() -> list[mcp_types.Tool]:
 @app.call_tool()
 async def call_mcp_tool(
     name: str, arguments: dict[str, Any]
-) -> list[mcp_types.Content]:
+) -> mcp_types.CallToolResult:
     """Call the Google REST method represented by an MCP tool."""
+    is_error = False
     try:
         try:
             session = app.request_context.session
@@ -244,18 +245,28 @@ async def call_mcp_tool(
             session = None
         result = await execute_tool(name, arguments, session=session)
     except GoogleApiError as exc:
+        is_error = True
         result = {
             "error": str(exc),
             "status_code": exc.status_code,
             "google_error": exc.payload,
         }
     except Exception as exc:  # noqa: BLE001 - MCP boundary returns a structured error
+        is_error = True
         print(f"MCP Server: Error executing {name!r}: {exc}", file=sys.stderr)
         result = {"error": f"Failed to execute tool {name!r}: {exc}"}
 
-    return [
-        mcp_types.TextContent(
-            type="text",
-            text=json.dumps(result, indent=2, ensure_ascii=False, default=str),
-        )
-    ]
+    # Confirmation failures are structured by execute_tool so callers can
+    # distinguish a declined/expired write from a successful provider response.
+    if isinstance(result, dict) and ("error" in result or "code" in result):
+        is_error = True
+
+    content = mcp_types.TextContent(
+        type="text",
+        text=json.dumps(result, indent=2, ensure_ascii=False, default=str),
+    )
+    return mcp_types.CallToolResult(
+        content=[content],
+        structuredContent=result if isinstance(result, dict) else None,
+        isError=is_error,
+    )
