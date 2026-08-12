@@ -1,0 +1,45 @@
+[project]
+name = "google-my-business-mcp"
+description = "MCP server for the complete Google Business Profile / Google My Business REST API surface"
+version = "0.1.0"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+readme = "README.md"
+dependencies = [
+    "google-auth~=2.40",
+    "httpx>=0.28.1",
+    "mcp>=1.24.0,<2",
+]
+keywords = ["google business profile", "google my business", "mcp", "gbp", "gmb"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "Topic :: Internet",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.urls]
+homepage = "https://github.com/jie8357IOII/google-my-business-mcp"
+repository = "https://github.com/jie8357IOII/google-my-business-mcp.git"
+issues = "https://github.com/jie8357IOII/google-my-business-mcp/issues"
+
+[project.scripts]
+google-my-business-mcp = "mybusiness_mcp.server:run_server"
+gmb-mcp = "mybusiness_mcp.server:run_server"
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6", "nox>=2026.2.9,<2027"]
+
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
