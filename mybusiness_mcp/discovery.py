@@ -298,9 +298,8 @@ def build_tool_name(
 def method_input_schema(descriptor: MethodDescriptor) -> dict[str, Any]:
     """Create a compact MCP input schema for a REST method.
 
-    Request bodies are intentionally shallow. Agents can call
-    gmb_describe_method/gmb_describe_schema for full Discovery schemas without
-    inflating tools/list by repeating large object graphs on every method.
+    Request bodies are intentionally shallow so tools/list does not repeat
+    large Google Discovery schemas for every method.
     """
     method = descriptor.method
     document = descriptor.document
@@ -324,7 +323,10 @@ def method_input_schema(descriptor: MethodDescriptor) -> dict[str, Any]:
         request = method["request"]
         body_schema: dict[str, Any] = {
             "type": "object",
-            "description": "JSON request body. Use gmb_describe_method for the complete Google Discovery schema before complex writes.",
+            "description": (
+                "JSON request body. Consult the Google API reference for the "
+                "complete request schema before complex writes."
+            ),
             "additionalProperties": True,
         }
         ref = request.get("$ref")
