@@ -12,7 +12,6 @@ from unittest.mock import patch
 import google.auth
 from google.auth.transport.requests import Request
 
-
 BUSINESS_MANAGE_SCOPE = "https://www.googleapis.com/auth/business.manage"
 _client_lock = threading.Lock()
 _credentials = None
@@ -54,10 +53,7 @@ def _get_credentials_sync():
 
 
 async def get_access_token(*, force_refresh: bool = False) -> str:
-    global _credentials
-
     def work() -> str:
-        global _credentials
         credentials = _get_credentials_sync()
         if force_refresh:
             with _client_lock:

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """Entry point for the Google Business Profile MCP server."""
 
 from __future__ import annotations
@@ -12,8 +11,7 @@ import mcp.server.stdio
 from mcp.server.lowlevel import NotificationOptions
 from mcp.server.models import InitializationOptions
 
-from . import __version__
-from . import coordinator
+from . import __version__, coordinator
 
 
 async def run_server_async() -> None:
@@ -42,7 +40,7 @@ if __name__ == "__main__":
         run_server()
     except KeyboardInterrupt:
         print("\nMCP Server (stdio) stopped by user.", file=sys.stderr)
-    except Exception:
+    except Exception:  # noqa: BLE001 - CLI boundary logs unexpected startup failures
         print("MCP Server (stdio) encountered an error:", file=sys.stderr)
         traceback.print_exc()
     finally:

@@ -13,9 +13,9 @@ from urllib.parse import quote
 
 import httpx
 
+from . import USER_AGENT
 from .auth import get_access_token
 from .discovery import MethodDescriptor
-
 
 _TEMPLATE_RE = re.compile(r"\{(\+)?([^}=]+)(?:=([^}]+))?\}")
 
@@ -231,7 +231,7 @@ def _google_headers(token: str) -> dict[str, str]:
         "Authorization": f"Bearer {token}",
         "Accept": "application/json",
         "X-GOOG-API-FORMAT-VERSION": "2",
-        "User-Agent": "google-my-business-mcp/0.1.0",
+        "User-Agent": USER_AGENT,
     }
     quota_project = os.environ.get("GOOGLE_CLOUD_PROJECT") or os.environ.get("GOOGLE_PROJECT_ID")
     if quota_project:

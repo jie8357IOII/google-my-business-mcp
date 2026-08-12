@@ -8,14 +8,16 @@ import json
 import os
 import re
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import httpx
 
-from .services import SERVICES, SERVICE_BY_KEY, ServiceDefinition
-
+from . import USER_AGENT
+from .legacy_catalog import BUNDLED_CATALOGS
+from .services import SERVICE_BY_KEY, SERVICES, ServiceDefinition
 
 SENSITIVE_GLOBAL_PARAMETERS = {
     "access_token",
@@ -42,7 +44,9 @@ class MethodDescriptor:
 
     @property
     def method_id(self) -> str:
-        return str(self.method.get("id") or ".".join((*self.resource_path, self.method_name)))
+        return str(
+            self.method.get("id") or ".".join((*self.resource_path, self.method_name))
+        )
 
     @property
     def display_name(self) -> str:
@@ -123,7 +127,14 @@ class DiscoveryCatalog:
             self._errors.clear()
             for service, result in zip(services, results):
                 if isinstance(result, BaseException):
-                    self._errors[service.key] = str(result)
+                    bundled = BUNDLED_CATALOGS.get(service.key)
+                    if bundled is None:
+                        self._errors[service.key] = str(result)
+                    else:
+                        self._documents[service.key] = bundled
+                        self._errors[service.key] = (
+                            f"live discovery failed; using bundled catalog: {result}"
+                        )
                 else:
                     self._documents[service.key] = result
             self._rebuild_methods()
@@ -136,7 +147,9 @@ class DiscoveryCatalog:
         try:
             return self._methods[tool_name]
         except KeyError as exc:
-            raise KeyError(f"Unknown Google Business Profile MCP tool: {tool_name}") from exc
+            raise KeyError(
+                f"Unknown Google Business Profile MCP tool: {tool_name}"
+            ) from exc
 
     def find_methods(self, query: str, limit: int = 25) -> list[MethodDescriptor]:
         q = query.strip().lower()
@@ -184,8 +197,10 @@ class DiscoveryCatalog:
                 except (OSError, json.JSONDecodeError):
                     pass
 
-        headers = {"User-Agent": "google-my-business-mcp/0.1.0"}
-        async with httpx.AsyncClient(timeout=self.timeout_seconds, headers=headers) as client:
+        headers = {"User-Agent": USER_AGENT}
+        async with httpx.AsyncClient(
+            timeout=self.timeout_seconds, headers=headers
+        ) as client:
             response = await client.get(service.discovery_url)
             response.raise_for_status()
             document = response.json()
@@ -283,9 +298,8 @@ def build_tool_name(
 def method_input_schema(descriptor: MethodDescriptor) -> dict[str, Any]:
     """Create a compact MCP input schema for a REST method.
 
-    Request bodies are intentionally shallow. Agents can call
-    gmb_describe_method/gmb_describe_schema for full Discovery schemas without
-    inflating tools/list by repeating large object graphs on every method.
+    Request bodies are intentionally shallow so tools/list does not repeat
+    large Google Discovery schemas for every method.
     """
     method = descriptor.method
     document = descriptor.document
@@ -309,7 +323,10 @@ def method_input_schema(descriptor: MethodDescriptor) -> dict[str, Any]:
         request = method["request"]
         body_schema: dict[str, Any] = {
             "type": "object",
-            "description": "JSON request body. Use gmb_describe_method for the complete Google Discovery schema before complex writes.",
+            "description": (
+                "JSON request body. Consult the Google API reference for the "
+                "complete request schema before complex writes."
+            ),
             "additionalProperties": True,
         }
         ref = request.get("$ref")
@@ -382,7 +399,9 @@ def shallow_schema(source: dict[str, Any]) -> dict[str, Any]:
     if "$ref" in source:
         return {
             "type": "object",
-            "description": str(source.get("description", f"Google schema: {source['$ref']}"))[:800],
+            "description": str(
+                source.get("description", f"Google schema: {source['$ref']}")
+            )[:800],
             "additionalProperties": True,
             "x-google-schema-ref": source["$ref"],
         }
@@ -395,10 +414,14 @@ def shallow_schema(source: dict[str, Any]) -> dict[str, Any]:
                 "x-google-schema-ref": item["$ref"],
             }
         else:
-            items = {key: item[key] for key in ("type", "format", "enum") if key in item}
+            items = {
+                key: item[key] for key in ("type", "format", "enum") if key in item
+            }
         result = {"type": "array", "items": items or {}}
     else:
-        result = {key: source[key] for key in ("type", "format", "enum") if key in source}
+        result = {
+            key: source[key] for key in ("type", "format", "enum") if key in source
+        }
         if not result:
             result["type"] = "object"
             result["additionalProperties"] = True
