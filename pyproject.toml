@@ -1,7 +1,7 @@
 [project]
 name = "google-my-business-mcp"
 description = "Simple MCP server for Google Business Profile REST APIs"
-version = "0.1.0"
+version = "0.2.0"
 requires-python = ">=3.10"
 license = "Apache-2.0"
 readme = "README.md"
@@ -20,6 +20,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Operating System :: OS Independent",
     "Topic :: Internet",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",

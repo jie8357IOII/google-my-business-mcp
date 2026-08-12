@@ -66,7 +66,8 @@ Example configuration for an MCP client:
     "google-my-business": {
       "command": "google-my-business-mcp",
       "env": {
-        "GOOGLE_APPLICATION_CREDENTIALS": "/path/to/application_default_credentials.json"
+        "GOOGLE_APPLICATION_CREDENTIALS": "/path/to/application_default_credentials.json",
+        "GMB_MCP_REQUIRE_WRITE_CONFIRMATION": "1"
       }
     }
   }
@@ -89,7 +90,18 @@ Each Google REST method is exposed directly as an MCP tool. Tool names use the f
 gmb_<service>_<resource>_<method>
 ```
 
-Examples can include tools for locations, reviews, local posts, media, verification, business information, and performance depending on the Discovery Documents currently published by Google.
+Examples include tools for locations, reviews, local posts, media, verification,
+business information, and performance. When Google's legacy v4 Discovery URL
+is unavailable, the server falls back only to its tested, version-controlled
+catalog for Local Posts, media, and reviews. Other services continue to require
+a valid live Discovery document.
+
+Tools expose conservative MCP annotations: GET/HEAD/OPTIONS are read-only,
+DELETE is destructive, and unknown methods are treated as writes. With
+`GMB_MCP_REQUIRE_WRITE_CONFIRMATION=1`, every write uses MCP elicitation to show
+the exact resource, update mask, body, target, and non-secret arguments before
+sending any HTTP request. Decline, cancellation, timeout, or unavailable
+elicitation fails closed.
 
 Path and query parameters are exposed as normal MCP arguments. Methods with a request payload accept a `body` object. Media-capable methods can additionally accept a local `media_path` and optional `media_content_type`.
 
@@ -104,6 +116,7 @@ mybusiness_mcp/
 ├── auth.py         # Google ADC credentials
 ├── client.py       # authenticated REST requests
 ├── discovery.py    # Discovery Document -> MCP tool definitions
+├── legacy_catalog.py # tested fallback for the legacy v4 surface
 └── services.py     # Google API service registry
 ```
 

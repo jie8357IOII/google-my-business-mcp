@@ -1,11 +1,13 @@
+import asyncio
+
 from mybusiness_mcp.discovery import (
+    DiscoveryCatalog,
     MethodDescriptor,
     build_tool_name,
     method_input_schema,
     walk_methods,
 )
 from mybusiness_mcp.services import SERVICE_BY_KEY
-
 
 DOC = {
     "protocol": "rest",
@@ -91,9 +93,7 @@ def test_walks_nested_methods():
 
 
 def test_tool_name_is_stable_and_compatible():
-    method = DOC["resources"]["locations"]["resources"]["reviews"]["methods"][
-        "list"
-    ]
+    method = DOC["resources"]["locations"]["resources"]["reviews"]["methods"]["list"]
     tool = build_tool_name(
         SERVICE_BY_KEY["business_information"],
         ("locations", "reviews"),
@@ -118,8 +118,31 @@ def test_compact_body_schema_preserves_top_level_fields():
     assert set(schema["required"]) == {"location.name", "updateMask"}
     assert schema["properties"]["body"]["properties"]["title"]["type"] == "string"
     assert (
-        schema["properties"]["body"]["properties"]["categories"][
-            "x-google-schema-ref"
-        ]
+        schema["properties"]["body"]["properties"]["categories"]["x-google-schema-ref"]
         == "Categories"
+    )
+
+
+def test_legacy_v4_404_falls_back_to_versioned_catalog(monkeypatch, tmp_path):
+    monkeypatch.setenv("GMB_MCP_SERVICES", "mybusiness_v4")
+
+    async def fail_live_discovery(service, *, force):
+        raise RuntimeError("404 Not Found")
+
+    catalog = DiscoveryCatalog(cache_dir=tmp_path)
+    monkeypatch.setattr(catalog, "_load_service", fail_live_discovery)
+    asyncio.run(catalog.ensure_loaded())
+
+    assert "using bundled catalog" in catalog.errors["mybusiness_v4"]
+    assert {
+        "gmb_v4_accounts_locations_localposts_create",
+        "gmb_v4_accounts_locations_localposts_list",
+        "gmb_v4_accounts_locations_media_create",
+        "gmb_v4_accounts_locations_reviews_updatereply",
+    }.issubset(catalog.methods)
+    assert (
+        catalog.get_method("gmb_v4_accounts_locations_localposts_patch").method[
+            "request"
+        ]["$ref"]
+        == "LocalPost"
     )
