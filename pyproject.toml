@@ -6,7 +6,7 @@ requires-python = ">=3.10"
 license = "Apache-2.0"
 readme = "README.md"
 dependencies = [
-    "google-auth~=2.40",
+    "google-auth[requests]~=2.40",
     "httpx>=0.28.1",
     "mcp>=1.24.0,<2",
 ]
