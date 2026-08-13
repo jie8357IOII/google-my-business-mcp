@@ -1,0 +1,36 @@
+title = "google-my-business-mcp secret scanning policy"
+
+[extend]
+useDefault = true
+
+# Google OAuth client secrets commonly use the GOCSPX- prefix.
+[[rules]]
+id = "google-oauth-client-secret"
+description = "Google OAuth client secret"
+regex = '''GOCSPX-[A-Za-z0-9_-]{20,}'''
+keywords = ["GOCSPX-"]
+
+# Catch OAuth client-secret values in JSON/config even when a provider-specific
+# prefix is not present.
+[[rules]]
+id = "google-oauth-client-secret-assignment"
+description = "Google OAuth client_secret assignment"
+regex = '''(?i)["']client[_-]?secret["']\s*[:=]\s*["']([A-Za-z0-9._~+\/=\-]{20,})["']'''
+secretGroup = 1
+keywords = ["client_secret", "client-secret"]
+
+# ADC authorized-user files contain a long-lived refresh_token. A later commit
+# deleting the file does not make an exposed token safe.
+[[rules]]
+id = "google-oauth-refresh-token-assignment"
+description = "Google OAuth refresh_token assignment"
+regex = '''(?i)["']refresh[_-]?token["']\s*[:=]\s*["']([A-Za-z0-9._~+\/=\-]{20,})["']'''
+secretGroup = 1
+keywords = ["refresh_token", "refresh-token"]
+
+# Google OAuth access tokens frequently use the ya29. prefix.
+[[rules]]
+id = "google-oauth-access-token"
+description = "Google OAuth access token"
+regex = '''ya29\.[A-Za-z0-9._~-]{20,}'''
+keywords = ["ya29."]
