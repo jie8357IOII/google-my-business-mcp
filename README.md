@@ -1,5 +1,8 @@
 # Google My Business MCP Server
 
+[![M8ven Score](https://m8ven.ai/badge/mcp/jie8357ioii-google-my-business-mcp-pyv11j)](https://m8ven.ai/mcp/jie8357ioii-google-my-business-mcp-pyv11j)
+[![M8ven Verified](https://m8ven.ai/badge/mcp/jie8357ioii-google-my-business-mcp-pyv11j)](https://m8ven.ai/mcp/jie8357ioii-google-my-business-mcp-pyv11j)
+
 > Inspired by the [Google Ads MCP Server](https://github.com/googleads/google-ads-mcp).
 
 This repository contains the source code for an
